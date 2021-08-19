@@ -6,6 +6,7 @@ import createGroup from '@functions/createGroup';
 import getImages from '@functions/getImages';
 import getImage from '@functions/getImage';
 import createImage from '@functions/createImage';
+import sendNotifications from '@functions/sendNotifications';
 
 const serverlessConfiguration: AWS = {
   service: 'service-10-udagram-app',
@@ -30,7 +31,9 @@ const serverlessConfiguration: AWS = {
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
       GROUPS_TABLE: 'Groups-${self:provider.stage}',
       IMAGES_TABLE: 'Image-${self:provider.stage}',
-      IMAGE_ID_INDEX: 'ImageIdIndex'
+      IMAGE_ID_INDEX: 'ImageIdIndex',
+      IMAGES_S3_BUCKET: 'serverless-udagram-images-tobenna-${self:provider.stage}',
+      SIGNED_URL_EXPIRATION: '300'
     },
     lambdaHashingVersion: '20201221',
     iamRoleStatements: [
@@ -61,11 +64,19 @@ const serverlessConfiguration: AWS = {
           'dynamodb:Query'
         ],
         Resource: 'arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.IMAGES_TABLE}/index/${self:provider.environment.IMAGE_ID_INDEX}'
+      },
+      {
+        Effect: 'Allow',
+        Action: [
+          's3:PutObject',
+          's3:GetObject'
+        ],
+        Resource: 'arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*'
       }
     ]
   },
   // import the function via paths
-  functions: { hello, groups, createGroup, getImages, getImage, createImage },
+  functions: { hello, groups, createGroup, getImages, getImage, createImage, sendNotifications },
   resources:{
     Resources: {
       GroupsDynamoDBTable: {
@@ -106,6 +117,41 @@ const serverlessConfiguration: AWS = {
             }
           ],
           BillingMode: 'PAY_PER_REQUEST'
+        }
+      },
+      AttachmentsBucket: {
+        Type: 'AWS::S3::Bucket',
+        Properties: {
+          BucketName: '${self:provider.environment.IMAGES_S3_BUCKET}',
+          CorsConfiguration:{
+            CorsRules: [
+              {
+                  AllowedOrigins: ['*'],
+                  AllowedHeaders: ['*'],
+                  AllowedMethods: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'],
+                  MaxAge: 3000,
+              },
+            ],
+          }
+        }
+      },
+      BucketPolicy: {
+        Type: 'AWS::S3::BucketPolicy',
+        Properties: {
+          PolicyDocument:{
+            Id: 'MyPolicy',
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Sid: 'PublicReadForGetBucketObjects',
+                Effect: 'Allow',
+                Principal: '*',
+                Action: 's3:GetObject',
+                Resource: 'arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*'
+              }
+            ]
+          },
+          Bucket: '${self:provider.environment.IMAGES_S3_BUCKET}'
         }
       }
     }
