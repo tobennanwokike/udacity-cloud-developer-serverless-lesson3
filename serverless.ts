@@ -7,6 +7,8 @@ import getImages from '@functions/getImages';
 import getImage from '@functions/getImage';
 import createImage from '@functions/createImage';
 import sendNotifications from '@functions/sendNotifications';
+import connect from '@functions/connect';
+import disconnect from '@functions/disconnect';
 
 const serverlessConfiguration: AWS = {
   service: 'service-10-udagram-app',
@@ -31,6 +33,7 @@ const serverlessConfiguration: AWS = {
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
       GROUPS_TABLE: 'Groups-${self:provider.stage}',
       IMAGES_TABLE: 'Image-${self:provider.stage}',
+      CONNECTIONS_TABLE: 'Connections-${self:provider.stage}',
       IMAGE_ID_INDEX: 'ImageIdIndex',
       IMAGES_S3_BUCKET: 'serverless-udagram-images-tobenna-${self:provider.stage}',
       SIGNED_URL_EXPIRATION: '300'
@@ -46,6 +49,17 @@ const serverlessConfiguration: AWS = {
         ],
         Resource: [
           {"Fn::GetAtt": [ 'GroupsDynamoDBTable', 'Arn' ]}
+        ]
+      },
+      {
+        Effect: 'Allow',
+        Action: [
+          'dynamodb:Scan',
+          'dynamodb:PutItem',
+          'dynamodb:DeleteItem'
+        ],
+        Resource: [
+          {"Fn::GetAtt": [ 'ConnectionsDynamoDBTable', 'Arn' ]}
         ]
       },
       {
@@ -76,13 +90,26 @@ const serverlessConfiguration: AWS = {
     ]
   },
   // import the function via paths
-  functions: { hello, groups, createGroup, getImages, getImage, createImage, sendNotifications },
+  functions: { hello, groups, createGroup, getImages, getImage, createImage, sendNotifications, connect, disconnect },
   resources:{
     Resources: {
       GroupsDynamoDBTable: {
         Type: 'AWS::DynamoDB::Table',
         Properties: {
             TableName: '${self:provider.environment.GROUPS_TABLE}',
+            AttributeDefinitions: [
+                { AttributeName: 'id', AttributeType: 'S' }
+            ],
+            KeySchema: [
+                { AttributeName: 'id', KeyType: 'HASH' }
+            ],
+            BillingMode: 'PAY_PER_REQUEST'
+        }
+      },
+      ConnectionsDynamoDBTable: {
+        Type: 'AWS::DynamoDB::Table',
+        Properties: {
+            TableName: '${self:provider.environment.CONNECTIONS_TABLE}',
             AttributeDefinitions: [
                 { AttributeName: 'id', AttributeType: 'S' }
             ],
