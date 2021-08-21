@@ -9,6 +9,7 @@ import createImage from '@functions/createImage';
 import sendNotifications from '@functions/sendNotifications';
 import connect from '@functions/connect';
 import disconnect from '@functions/disconnect';
+import elasticSearchSync from '@functions/elasticSearchSync';
 
 const serverlessConfiguration: AWS = {
   service: 'service-10-udagram-app',
@@ -90,7 +91,7 @@ const serverlessConfiguration: AWS = {
     ]
   },
   // import the function via paths
-  functions: { hello, groups, createGroup, getImages, getImage, createImage, sendNotifications, connect, disconnect },
+  functions: { hello, groups, createGroup, getImages, getImage, createImage, sendNotifications, connect, disconnect, elasticSearchSync },
   resources:{
     Resources: {
       GroupsDynamoDBTable: {
@@ -143,7 +144,10 @@ const serverlessConfiguration: AWS = {
               }
             }
           ],
-          BillingMode: 'PAY_PER_REQUEST'
+          BillingMode: 'PAY_PER_REQUEST',
+          StreamSpecification: {
+            StreamViewType: 'NEW_IMAGE'
+          }
         }
       },
       AttachmentsBucket: {
@@ -180,7 +184,40 @@ const serverlessConfiguration: AWS = {
           },
           Bucket: '${self:provider.environment.IMAGES_S3_BUCKET}'
         }
-      }
+      },
+      ImagesSearch: {
+        Type: 'AWS::Elasticsearch::Domain',
+        Properties: {
+          ElasticsearchVersion: '6.3',
+          DomainName: 'images-search-${self:provider.stage}',
+          ElasticsearchClusterConfig:{
+            DedicatedMasterEnabled: false,
+            InstanceCount: '1',
+            ZoneAwarenessEnabled: false,
+            InstanceType: 't2.small.elasticsearch'
+          },
+          EBSOptions: {
+            EBSEnabled: true,
+            Iops: 0,
+            VolumeSize: 10,
+            VolumeType: 'gp2'
+          },
+          AccessPolicies: {
+            Version: '2012-10-17',
+            Statement:[{
+              Effect: 'Allow',
+              Principal: {
+                AWS: '*'
+              },
+              Action: 'es:*',
+              Resource: { 'Fn::Sub': 'arn:aws:es:${self:provider.region}:${AWS::AccountId}:domain/images-search-${self:provider.stage}/*' },
+              Condition:{
+                IpAddress: { 'aws:SourceIp': ['129.205.113.11'] }
+              }
+            }]
+          }
+        }
+      },
     }
   }
 };
