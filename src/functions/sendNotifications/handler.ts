@@ -1,7 +1,7 @@
 import 'source-map-support/register';
 
 import { middyfy } from '@libs/lambda';
-import { S3Handler, S3Event } from 'aws-lambda';
+import { SNSHandler, S3Event, SNSEvent } from 'aws-lambda';
 import * as AWS from 'aws-sdk'
 
 
@@ -17,9 +17,20 @@ const connectionParams = {
 
 const apiGateway = new AWS.ApiGatewayManagementApi(connectionParams)
 
-const sendNotifications:S3Handler = async (event:S3Event) => {
-  console.log('We out here')
-  for (const record of event.Records){
+const sendNotifications: SNSHandler = async (event: SNSEvent) => {
+  console.log('Processing SNS event: ', event)
+  for (const snsRecord of event.Records){
+    const s3EventStr = snsRecord.Sns.Message
+    console.log('Processing item with key: ', s3EventStr)
+    const s3Event = JSON.parse(s3EventStr)
+    
+    await processS3event(s3Event)
+    
+  }
+}
+
+async function processS3event(S3Event:S3Event){
+  for (const record of S3Event.Records){
     const key = record.s3.object.key
     console.log('Processing item with key: ', key)
 

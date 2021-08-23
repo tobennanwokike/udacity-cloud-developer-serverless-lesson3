@@ -8,10 +8,9 @@ export default {
   },
   events: [
     {
-      s3: {
-        bucket: 'serverless-udagram-images-tobenna-dev',
-        event: 's3:ObjectCreated:*',
-        existing: true
+      sns: {
+        arn: { 'Fn::Join': [':', ['arn:aws:sns', { Ref: 'AWS::Region' }, { Ref: 'AWS::AccountId' }, '${self:custom.topicName}']] },
+        topicName: '${self:custom.topicName}'
       }
     }
   ]
