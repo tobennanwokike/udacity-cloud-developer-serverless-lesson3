@@ -16,6 +16,7 @@
     "get-stream": "^6.0.1",
     "http-aws-es": "^6.0.0",
     "jimp": "^0.16.1",
+    "jsonwebtoken": "^8.5.1",
     "source-map-support": "^0.5.19",
     "uuid": "^8.3.2"
   },
